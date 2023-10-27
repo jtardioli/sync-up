@@ -1,15 +1,17 @@
+import { io } from "socket.io-client";
+
 const socket = io();
 
-let localStream;
-let remoteStream;
-let peerConnection;
-let isRoomOwner;
+let localStream: MediaStream | undefined;
+let remoteStream: MediaStream | undefined;
+let peerConnection: RTCPeerConnection | undefined;
+let isRoomOwner: boolean;
 
 const roomId = 1; // Prompt the user for a room ID
 
 socket.emit("join-room", roomId); // Emit a createOrJoin event to the server
 
-socket.on("update-owner-status", async ({ isOwner }) => {
+socket.on("update-owner-status", async ({ isOwner }: { isOwner: boolean }) => {
   await initiateConnection();
   isRoomOwner = isOwner;
   console.log({ isRoomOwner });
@@ -19,33 +21,31 @@ socket.on("ready-to-connect", async () => {
   await initiateConnection();
   if (isRoomOwner) {
     console.log("Sending connection");
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
+    const offer = await peerConnection!.createOffer();
+    await peerConnection!.setLocalDescription(offer);
     socket.emit("offer", offer, roomId);
   }
 });
 
-socket.on("offer", async (offer) => {
+socket.on("offer", async (offer: RTCSessionDescriptionInit) => {
   await initiateConnection();
   console.log("offer received", offer);
   console.log("heyeyeyey", peerConnection);
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-  const answer = await peerConnection.createAnswer();
-  await peerConnection.setLocalDescription(answer);
+  await peerConnection!.setRemoteDescription(new RTCSessionDescription(offer));
+  const answer = await peerConnection!.createAnswer();
+  await peerConnection!.setLocalDescription(answer);
   console.log("sending answer");
   socket.emit("answer", answer, roomId);
 });
 
-socket.on("answer", async (answer) => {
+socket.on("answer", async (answer: RTCSessionDescriptionInit) => {
   console.log("answer received", answer);
-
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+  await peerConnection!.setRemoteDescription(new RTCSessionDescription(answer));
 });
 
-socket.on("candidate", async (candidate) => {
+socket.on("candidate", async (candidate: RTCIceCandidateInit) => {
   // console.log({ candidate });
-
-  await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+  await peerConnection!.addIceCandidate(new RTCIceCandidate(candidate));
 });
 
 async function initiateConnection() {
@@ -56,7 +56,10 @@ async function initiateConnection() {
     });
 
     localStream = stream;
-    document.getElementById("localVideo").srcObject = localStream;
+    const localVideoElement = document.getElementById(
+      "localVideo"
+    ) as HTMLVideoElement;
+    localVideoElement.srcObject = localStream;
 
     peerConnection = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
@@ -70,12 +73,15 @@ async function initiateConnection() {
 
     peerConnection.ontrack = (event) => {
       remoteStream = event.streams[0];
-      document.getElementById("remoteVideo").srcObject = remoteStream;
+      const remoteVideoElement = document.getElementById(
+        "remoteVideo"
+      ) as HTMLVideoElement;
+      remoteVideoElement.srcObject = remoteStream;
     };
 
     localStream
       .getTracks()
-      .forEach((track) => peerConnection.addTrack(track, localStream));
+      .forEach((track) => peerConnection!.addTrack(track, localStream!));
 
     console.log({ peerConnection });
   } catch (error) {
