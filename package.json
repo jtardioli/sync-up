@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "build:server": "tsc --project server",
-    "build:client": "tsc --project client",
+    "build:client": "npx webpack",
     "build": "npm run build:server && npm run build:client",
     "start:server": "node server/dist/index.js",
     "start": "npm run build && npm run start:server"

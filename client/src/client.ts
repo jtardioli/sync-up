@@ -9,7 +9,7 @@ let isRoomOwner: boolean;
 
 const roomId = 1; // Prompt the user for a room ID
 
-socket.emit("join-room", roomId); // Emit a createOrJoin event to the server
+socket.emit("join-room", { roomId }); // Emit a createOrJoin event to the server
 
 socket.on("update-owner-status", async ({ isOwner }: { isOwner: boolean }) => {
   await initiateConnection();
@@ -22,12 +22,14 @@ socket.on("ready-to-connect", async () => {
   if (isRoomOwner) {
     console.log("Sending connection");
     const offer = await peerConnection!.createOffer();
+    console.log("sending offer to server:", { offer });
     await peerConnection!.setLocalDescription(offer);
-    socket.emit("offer", offer, roomId);
+    socket.emit("offer", { offer, roomId });
   }
 });
 
 socket.on("offer", async (offer: RTCSessionDescriptionInit) => {
+  console.log("hey offer");
   await initiateConnection();
   console.log("offer received", offer);
   console.log("heyeyeyey", peerConnection);
@@ -35,7 +37,7 @@ socket.on("offer", async (offer: RTCSessionDescriptionInit) => {
   const answer = await peerConnection!.createAnswer();
   await peerConnection!.setLocalDescription(answer);
   console.log("sending answer");
-  socket.emit("answer", answer, roomId);
+  socket.emit("answer", { answer, roomId });
 });
 
 socket.on("answer", async (answer: RTCSessionDescriptionInit) => {
@@ -44,8 +46,17 @@ socket.on("answer", async (answer: RTCSessionDescriptionInit) => {
 });
 
 socket.on("candidate", async (candidate: RTCIceCandidateInit) => {
-  // console.log({ candidate });
+  console.log("kjhlkjhlkhlkjhlkjhlkjh");
+  console.log({ candidate });
   await peerConnection!.addIceCandidate(new RTCIceCandidate(candidate));
+});
+
+socket.on("disconnect", (reason) => {
+  console.log("Socket disconnected due to:", reason);
+});
+
+socket.on("fart", () => {
+  console.log("fart");
 });
 
 async function initiateConnection() {
@@ -67,7 +78,8 @@ async function initiateConnection() {
 
     peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
-        socket.emit("candidate", roomId, event.candidate); // Include room ID
+        console.log("sending candidate");
+        socket.emit("candidate", { roomId, candidate: event.candidate }); // Include room ID
       }
     };
 
@@ -83,7 +95,7 @@ async function initiateConnection() {
       .getTracks()
       .forEach((track) => peerConnection!.addTrack(track, localStream!));
 
-    console.log({ peerConnection });
+    console.log("complete init");
   } catch (error) {
     console.error("Error:", error);
   }

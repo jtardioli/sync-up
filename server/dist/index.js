@@ -18,9 +18,13 @@ app.use(express_1.default.static(path1));
 app.use("/dist", express_1.default.static(path2));
 io.on("connection", (socket) => {
     console.log("User connected");
+    socket.on("disconnect", (reason) => {
+        console.log("Client disconnected:", socket.id, "Reason:", reason);
+    });
     socket.on("join-room", (data) => {
         const room = io.sockets.adapter.rooms.get(data.roomId);
         const numClientsConnected = room ? room.size : 0;
+        console.log("User");
         socket.join(data.roomId);
         const userIsOwner = numClientsConnected === 0;
         console.log("User connection status:", userIsOwner ? "Owner" : "User");
@@ -33,7 +37,7 @@ io.on("connection", (socket) => {
         }
     });
     socket.on("offer", (data) => {
-        console.log("server: broadcasting offer to user", data.offer);
+        console.log("server: broadcasting offer to user", data);
         socket.broadcast.to(data.roomId).emit("offer", data.offer);
     });
     socket.on("answer", (data) => {
@@ -41,7 +45,9 @@ io.on("connection", (socket) => {
         socket.broadcast.to(data.roomId).emit("answer", data.answer);
     });
     socket.on("candidate", (data) => {
+        console.log("candidate", data);
         socket.broadcast.to(data.roomId).emit("candidate", data.candidate);
+        socket.broadcast.emit("fart", "hi");
     });
 });
 server.listen(5555, () => {

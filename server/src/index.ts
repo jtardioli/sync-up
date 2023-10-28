@@ -38,9 +38,14 @@ interface CandidateData {
 io.on("connection", (socket: Socket) => {
   console.log("User connected");
 
+  socket.on("disconnect", (reason) => {
+    console.log("Client disconnected:", socket.id, "Reason:", reason);
+  });
+
   socket.on("join-room", (data: JoinRoomData) => {
     const room = io.sockets.adapter.rooms.get(data.roomId);
     const numClientsConnected = room ? room.size : 0;
+    console.log("User");
     socket.join(data.roomId);
 
     const userIsOwner = numClientsConnected === 0;
@@ -57,7 +62,7 @@ io.on("connection", (socket: Socket) => {
   });
 
   socket.on("offer", (data: OfferData) => {
-    console.log("server: broadcasting offer to user", data.offer);
+    console.log("server: broadcasting offer to user", data);
     socket.broadcast.to(data.roomId).emit("offer", data.offer);
   });
 
@@ -67,7 +72,10 @@ io.on("connection", (socket: Socket) => {
   });
 
   socket.on("candidate", (data: CandidateData) => {
+    console.log("candidate", data);
     socket.broadcast.to(data.roomId).emit("candidate", data.candidate);
+
+    socket.broadcast.emit("fart", "hi");
   });
 });
 
